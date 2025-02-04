@@ -12,7 +12,12 @@
   <depend>pcl_conversions</depend>
   <depend>pcl_ros</depend>
   <depend>roscpp</depend>
+  <depend>rospy</depend>
   <depend>sensor_msgs</depend>
+  <depend>dynamic_reconfigure</depend>
+  <depend>message_generation</depend>
+
+
 
   <!-- Export section (important for finding executables) -->
   <export>
