@@ -17,11 +17,19 @@ ros::Publisher pub;
 void voxelFilter(pcl::PCLPointCloud2ConstPtr cloudInPtr, pcl::PCLPointCloud2& cloudOut, double leafSize);
 void boxFilter(pcl::PCLPointCloud2ConstPtr cloudInPtr, pcl::PCLPointCloud2& cloudOut); 
 
-double threshold;
+double leaf_size; 
+double min_x, min_y, min_z; 
+double max_x, max_y, max_z; 
 
 void reconfigureCallback(pcl_ros_wrapper::PclFilterConfig &config, uint32_t level) {
-  threshold = config.threshold;
-  ROS_INFO("Reconfigured: threshold = %f", threshold);
+  leaf_size = config.leaf_size;
+  min_x = config.min_x;
+  min_y = config.min_y;
+  min_z = config.min_z;
+  max_x = config.max_x;
+  max_y = config.max_y;
+  max_z = config.max_z;
+  ROS_INFO("Reconfigured: leaf_size = %f", leaf_size);
 }
 
 void  cloud_cb (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
@@ -36,14 +44,18 @@ void  cloud_cb (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
   pcl_conversions::toPCL(*cloud_msg, *cloud);
 
   // Voxel filter
-  voxelFilter(cloudPtr, cloud_filtered, 0.1f);
-  boxFilter(cloudPtr, cloud_filtered);
+  voxelFilter(cloudPtr, cloud_filtered, leaf_size);
+  //boxFilter(cloudPtr, cloud_filtered);
 
   // Convert to ROS data type
   sensor_msgs::PointCloud2 output;
   // Copy header
   output.header = cloud_msg->header;
-  output.header.frame_id = "camera_color_optical_frame";
+  // REAL ROBOT
+  //output.header.frame_id = "camera_color_optical_frame";
+  // SIMULATION 
+  output.header.frame_id = "/red/base_link";
+  output.header.frame_id = "lidar_frame"; 
   pcl_conversions::fromPCL(cloud_filtered, output);
 
   /*  pcl::PointCloud<pcl::PointXYZ>::Ptr ptr_transformed(new pcl::PointCloud<pcl::PointXYZ>);
@@ -78,8 +90,8 @@ void boxFilter(pcl::PCLPointCloud2ConstPtr cloudInPtr, pcl::PCLPointCloud2& clou
   // Test the PointCloud<PointT> method
   pcl::CropBox<pcl::PCLPointCloud2> cBF; 
   cBF.setInputCloud (cloudInPtr);
-  Eigen::Vector4f min_pt (-0.5f, -0.5f, 0.0f, 1.0f);
-  Eigen::Vector4f max_pt (0.5f, 0.5f, 3.0f, 1.0f);
+  Eigen::Vector4f min_pt (min_x, min_y, min_z, 1.0f);
+  Eigen::Vector4f max_pt (max_x, max_y, max_z, 1.0f);
 
   // Cropbox slighlty bigger then bounding box of points
   cBF.setMin (min_pt);
@@ -100,17 +112,21 @@ int main (int argc, char** argv)
   ros::NodeHandle nh;
 
   // Create a ROS subscriber for the input point cloud
-  ros::Subscriber sub = nh.subscribe ("/camera/depth/color/points", 1, cloud_cb);
+  // REAL ROBOT
+  // ros::Subscriber sub = nh.subscribe ("/camera/depth/color/points", 1, cloud_cb);
+  // SIMULATION
+  ros::Subscriber sub = nh.subscribe ("/livox/lidar", 1, cloud_cb);
+
 
   // Create a ROS publisher for the output point cloud
   pub = nh.advertise<sensor_msgs::PointCloud2> ("/filtered_pcl", 1);
 
   // Dynamic reconfigure server setup
-  dynamic_reconfigure::Server<pcl_ros_wrapper::PclFilterConfig> server;
-  dynamic_reconfigure::Server<pcl_ros_wrapper::PclFilterConfig>::CallbackType f;
+  dynamic_reconfigure::Server<pcl_ros_wrapper::PclFilterConfig> reconfServer;
+  dynamic_reconfigure::Server<pcl_ros_wrapper::PclFilterConfig>::CallbackType reconfCb;
 
-  f = boost::bind(&reconfigureCallback, _1, _2);
-  server.setCallback(f);
+  reconfCb = boost::bind(&reconfigureCallback, _1, _2);
+  reconfServer.setCallback(reconfCb);
 
 
   // Spin

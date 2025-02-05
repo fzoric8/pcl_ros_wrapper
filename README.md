@@ -13,5 +13,5 @@ Use dynamic reconfigure to change parameters.
 ## TODO: 
 - [ ] Test with real pointcloud
 - [ ] Add yaml to read topic names 
-
+- [ ] Add real params for the reconfigure
 
